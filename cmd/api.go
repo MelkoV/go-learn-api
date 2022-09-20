@@ -1,27 +1,23 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/MelkoV/go-learn-api/api"
+	"github.com/MelkoV/go-learn-common/app"
+	"github.com/MelkoV/go-learn-logger/logger"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // apiCmd represents the api command
 var apiCmd = &cobra.Command{
 	Use:   "api",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Run API JsonRPC server",
+	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("api called")
+		port := viper.GetInt("api.port")
+		l := logger.NewCategoryLogger("jsonrpc/api", logger.NewStreamLog())
+		l.Format("init", app.SYSTEM_UUID, "starting API server on port %d", port).Info()
+		api.Serve(port, l)
 	},
 }
 
