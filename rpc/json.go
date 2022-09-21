@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/MelkoV/go-learn-logger/logger"
+	"net/http"
 )
 
 type ctxKey int
@@ -18,7 +19,7 @@ type JsonRequest struct {
 }
 
 type Action interface {
-	Handler(ctx context.Context, l *logger.CategoryLogger)
+	Handler(ctx context.Context, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request)
 }
 
 func FillParams(data JsonRequest, v Action) error {
@@ -31,6 +32,16 @@ func FillParams(data JsonRequest, v Action) error {
 		return err
 	}
 	return nil
+}
+
+type ProtocolError struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Error   struct {
+	}
+}
+
+func WriteError(w http.ResponseWriter, code int, message string) {
+
 }
 
 /*

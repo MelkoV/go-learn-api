@@ -40,7 +40,6 @@ func Serve(port int, l *logger.CategoryLogger) {
 func prepareAction(category string, w http.ResponseWriter, r *http.Request, l *logger.CategoryLogger) (context.Context, rpc.JsonRequest, error) {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, rpc.CtxUuidKey, makeUuid())
-	//id := makeUuid()
 	var data rpc.JsonRequest
 	if err := middleware.WithPostData(w, r, &data); err != nil {
 		return nil, rpc.JsonRequest{}, err
@@ -49,12 +48,12 @@ func prepareAction(category string, w http.ResponseWriter, r *http.Request, l *l
 	return ctx, data, nil
 }
 
-func runAction(ctx context.Context, data rpc.JsonRequest, a rpc.Action, l *logger.CategoryLogger) error {
+func runAction(ctx context.Context, data rpc.JsonRequest, a rpc.Action, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request) error {
 	if err := rpc.FillParams(data, a); err != nil {
 		return err
 	}
 	l.Format("user", ctx.Value(rpc.CtxUuidKey).(string), "start action %s with data %v", data.Method, a).Info()
-	a.Handler(ctx, l)
+	a.Handler(ctx, l, w, r)
 	return nil
 }
 
@@ -75,7 +74,7 @@ func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = runAction(ctx, data, a, s.l); err != nil {
+	if err = runAction(ctx, data, a, s.l, w, r); err != nil {
 		s.l.Format("user", id, "run action error: %v", err).Error()
 		return
 	}
