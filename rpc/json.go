@@ -2,27 +2,29 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/MelkoV/go-learn-logger/logger"
 	"net/http"
 )
 
 type ctxKey int
 
-const CtxUuidKey ctxKey = 1
+const (
+	CtxUuidKey   ctxKey = 1
+	MethodHeader        = "X-RPC-METHOD"
+)
 
-type JsonRequest struct {
+/*type JsonRequest struct {
 	Jsonrpc string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
 	Id      interface{} `json:"id"`
 	Params  interface{}
-}
+}*/
 
 type Action interface {
-	Handler(ctx context.Context, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request)
+	Handle(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request)
 }
 
-func FillParams(data JsonRequest, v Action) error {
+/*func FillParams(data JsonRequest, v Action) error {
 	raw, err := json.Marshal(data.Params)
 	if err != nil {
 		return err
@@ -32,11 +34,10 @@ func FillParams(data JsonRequest, v Action) error {
 		return err
 	}
 	return nil
-}
+}*/
 
 type ProtocolError struct {
-	Jsonrpc string `json:"jsonrpc"`
-	Error   struct {
+	Error struct {
 	}
 }
 

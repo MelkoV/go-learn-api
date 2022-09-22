@@ -9,34 +9,30 @@ import (
 	"net/http"
 )
 
-type Login struct {
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	IsRemember bool   `json:"isRemember"`
-}
-
-func (m *Login) Handler(ctx context.Context, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request) {
+func (m *LoginRequest) Handle(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request) {
+	l.Debug("model %v", m)
+	return
 	uuid := ctx.Value(rpc.CtxUuidKey).(string)
 	client := service.NewUserServiceClient(ctx, l)
 	user, err := client.Login(ctx, &pb.LoginRequest{
 		Uuid: uuid,
 		User: &pb.User{
-			Username: m.Username,
-			Password: m.Password,
+			Username: m.Login.Username,
+			Password: m.Login.Password,
 		},
-		Remember: m.IsRemember,
+		Remember: m.Login.IsRemember,
 	})
 	if err != nil {
-		l.Format("user", uuid, "error call user service: %v", err).Error()
+		l.Error("error call user service: %v", err)
 	}
-	l.Format("user", uuid, "user result: %v", user).Info()
+	l.Info("user result: %v", user)
 }
 
 type Status struct {
 	Session string `json:"session"`
 }
 
-func (m *Status) Handler(ctx context.Context, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request) {
+func (m *Status) Handler(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request) {
 	//uuid := ctx.Value(rpc.CtxUuidKey).(string)
 
 }

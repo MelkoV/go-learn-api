@@ -4,7 +4,8 @@ go 1.17
 
 require (
 	github.com/MelkoV/go-learn-common v0.0.1
-	github.com/MelkoV/go-learn-logger v0.0.3
+	github.com/MelkoV/go-learn-logger v0.1.1
+	github.com/MelkoV/go-learn-proto v0.0.4
 	github.com/google/uuid v1.3.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.13.0
@@ -12,7 +13,6 @@ require (
 )
 
 require (
-	github.com/MelkoV/go-learn-proto v0.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

@@ -2,13 +2,15 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/MelkoV/go-learn-api/api/user"
 	"github.com/MelkoV/go-learn-api/middleware"
 	"github.com/MelkoV/go-learn-api/rpc"
-	"github.com/MelkoV/go-learn-common/app"
 	"github.com/MelkoV/go-learn-logger/logger"
 	"github.com/google/uuid"
+	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -19,102 +21,64 @@ func makeUuid() string {
 }
 
 type Server struct {
-	l *logger.CategoryLogger
+	l logger.CategoryLogger
 }
 
-func NewApiServer(l *logger.CategoryLogger) *Server {
+func NewApiServer(l logger.CategoryLogger) *Server {
 	return &Server{l: l}
 }
 
-func Serve(port int, l *logger.CategoryLogger) {
+func Serve(port int, l logger.CategoryLogger) {
 	mux := http.NewServeMux()
 	server := NewApiServer(l)
 
 	mux.HandleFunc("/user", server.userHandler)
 
-	l.Format("init", app.SYSTEM_UUID, "running API server on port %d", port).Info()
+	l.Info("running API server on port %d", port)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux))
 }
 
-func prepareAction(category string, w http.ResponseWriter, r *http.Request, l *logger.CategoryLogger) (context.Context, rpc.JsonRequest, error) {
+func prepareAction(w http.ResponseWriter, r *http.Request, l logger.CategoryLogger) (context.Context, string, error) {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, rpc.CtxUuidKey, makeUuid())
-	var data rpc.JsonRequest
-	if err := middleware.WithPostData(w, r, &data); err != nil {
-		return nil, rpc.JsonRequest{}, err
+	id := makeUuid()
+	ctx = context.WithValue(ctx, rpc.CtxUuidKey, id)
+	l.WithUuid(id)
+	if err := middleware.WithPostData(w, r); err != nil {
+		return nil, "", err
 	}
-	l.Format(category, ctx.Value(rpc.CtxUuidKey).(string), "incoming request: %v", data).Info()
-	return ctx, data, nil
+	method := r.Header.Get(rpc.MethodHeader)
+	if method == "" {
+		return nil, "", errors.New("empty method")
+	}
+	return ctx, method, nil
 }
 
-func runAction(ctx context.Context, data rpc.JsonRequest, a rpc.Action, l *logger.CategoryLogger, w http.ResponseWriter, r *http.Request) error {
-	if err := rpc.FillParams(data, a); err != nil {
-		return err
+func runAction(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request, action rpc.Action) {
+	body, _ := ioutil.ReadAll(r.Body)
+	l.Info("run action with request %v", string(body[:]))
+	if err := json.Unmarshal(body, &action); err != nil {
+		l.Error("unmarshal error: %v", err)
+		return
 	}
-	l.Format("user", ctx.Value(rpc.CtxUuidKey).(string), "start action %s with data %v", data.Method, a).Info()
-	a.Handler(ctx, l, w, r)
-	return nil
+	action.Handle(ctx, l, w, r)
 }
 
 func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, data, err := prepareAction("user", w, r, s.l)
+	l := s.l.AddSubCategory("user")
+	ctx, method, err := prepareAction(w, r, l)
 	if err != nil {
-		s.l.Format("user", app.SYSTEM_UUID, "middleware error: %v", err).Error()
+		l.Error("can't prepare action: %s", err)
 		return
 	}
-	id := ctx.Value(rpc.CtxUuidKey).(string)
-
-	var a rpc.Action
-
-	if data.Method == "login" {
-		a = &user.Login{}
-	} else {
-		s.l.Format("user", id, "no action for method: %v", data.Method).Error()
+	l = l.AddSubCategory(method)
+	var action rpc.Action
+	switch method {
+	case "login":
+		action = &user.LoginRequest{}
+	default:
+		l.Error("not found handler for method %s", method)
 		return
 	}
-
-	if err = runAction(ctx, data, a, s.l, w, r); err != nil {
-		s.l.Format("user", id, "run action error: %v", err).Error()
-		return
-	}
-
-	/*a := rpc.NewJsonAction(data.Method)
-
-	if a.Method == "login" {
-		var model user.LoginRequest
-		err = rpc.FillParams(data, &model)
-		a.Register(user.LoginHandler)
-	}*/
-
-	/*
-		type call struct {
-			method  string
-			handler func(l *logger.CategoryLogger, v interface{})
-		}
-		var callable = call{
-			method: data.Method,
-		}
-
-		if callable.method == "login" {
-			var model user.LoginRequest
-			err = rpc.FillParams(data, &model)
-			callable.handler = //func() {
-				user.LoginHandler
-			//}
-		} else {
-			s.l.Format("user", id, "no action for method: %v", callable.method).Error()
-			return
-		}
-
-		if err != nil {
-			s.l.Format("user", id, "fill params error: %v", err).Error()
-			return
-		}
-
-		s.l.Format("user", id, "start action %v", callable.method).Error()
-
-		callable.handler()
-
-	*/
+	runAction(ctx, l, w, r, action)
 }
