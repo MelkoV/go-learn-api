@@ -69,6 +69,7 @@ func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, method, err := prepareAction(w, r, l)
 	if err != nil {
 		l.Error("can't prepare action: %s", err)
+		rpc.WriteError(w, rpc.CodeServerError, rpc.MessageServerError)
 		return
 	}
 	l = l.AddSubCategory(method)
@@ -78,6 +79,7 @@ func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
 		action = &user.LoginRequest{}
 	default:
 		l.Error("not found handler for method %s", method)
+		rpc.WriteError(w, rpc.CodeNotFound, rpc.MessageNotFound)
 		return
 	}
 	runAction(ctx, l, w, r, action)

@@ -10,10 +10,19 @@ import (
 )
 
 func (m *LoginRequest) Handle(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request) {
-	l.Debug("model %v", m)
-	return
+	client, err := service.UserServiceClient()
+	if err != nil {
+		l.Error("failed connect to gRPC user service: %s", err)
+		rpc.WriteError(w, rpc.CodeServerError, rpc.MessageServerError)
+		return
+	}
+	/*cc, err := r.Cookie("test")
+	if err != nil {
+		l.Error("cookie not found")
+	} else {
+		l.Info("cookie value is %s", cc.Value)
+	}*/
 	uuid := ctx.Value(rpc.CtxUuidKey).(string)
-	client := service.NewUserServiceClient(ctx, l)
 	user, err := client.Login(ctx, &pb.LoginRequest{
 		Uuid: uuid,
 		User: &pb.User{
@@ -24,8 +33,14 @@ func (m *LoginRequest) Handle(ctx context.Context, l logger.CategoryLogger, w ht
 	})
 	if err != nil {
 		l.Error("error call user service: %v", err)
+		rpc.WriteError(w, rpc.CodeServerError, rpc.MessageServerError)
+		return
 	}
 	l.Info("user result: %v", user)
+	for _, c := range user.Cookie {
+		rpc.SetCookie(w, c.Name, c.Value, int(c.MaxAge))
+	}
+	rpc.WriteOk(w, user.User)
 }
 
 type Status struct {
