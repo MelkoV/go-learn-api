@@ -8,6 +8,7 @@ import (
 	"github.com/MelkoV/go-learn-api/api/user"
 	"github.com/MelkoV/go-learn-api/middleware"
 	"github.com/MelkoV/go-learn-api/rpc"
+	"github.com/MelkoV/go-learn-common/dictionary"
 	"github.com/MelkoV/go-learn-logger/logger"
 	"github.com/google/uuid"
 	"io/ioutil"
@@ -22,15 +23,16 @@ func makeUuid() string {
 
 type Server struct {
 	l logger.CategoryLogger
+	d dictionary.IStorage
 }
 
-func NewApiServer(l logger.CategoryLogger) *Server {
-	return &Server{l: l}
+func NewApiServer(l logger.CategoryLogger, d dictionary.IStorage) *Server {
+	return &Server{l: l, d: d}
 }
 
-func Serve(port int, l logger.CategoryLogger) {
+func Serve(port int, l logger.CategoryLogger, d dictionary.IStorage) {
 	mux := http.NewServeMux()
-	server := NewApiServer(l)
+	server := NewApiServer(l, d)
 
 	mux.HandleFunc("/user", server.userHandler)
 
@@ -54,14 +56,14 @@ func prepareAction(w http.ResponseWriter, r *http.Request, l logger.CategoryLogg
 	return ctx, method, nil
 }
 
-func runAction(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request, action rpc.Action) {
+func runAction(ctx context.Context, l logger.CategoryLogger, d dictionary.IStorage, w http.ResponseWriter, r *http.Request, action rpc.Action) {
 	body, _ := ioutil.ReadAll(r.Body)
 	l.Info("run action with request %v", string(body[:]))
 	if err := json.Unmarshal(body, &action); err != nil {
 		l.Error("unmarshal error: %v", err)
 		return
 	}
-	action.Handle(ctx, l, w, r)
+	action.Handle(ctx, l, d, w, r)
 }
 
 func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +71,7 @@ func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, method, err := prepareAction(w, r, l)
 	if err != nil {
 		l.Error("can't prepare action: %s", err)
-		rpc.WriteError(w, rpc.CodeServerError, rpc.MessageServerError)
+		rpc.WriteRpcError(w, rpc.CodeServerError, rpc.MessageServerError)
 		return
 	}
 	l = l.AddSubCategory(method)
@@ -79,8 +81,8 @@ func (s *Server) userHandler(w http.ResponseWriter, r *http.Request) {
 		action = &user.LoginRequest{}
 	default:
 		l.Error("not found handler for method %s", method)
-		rpc.WriteError(w, rpc.CodeNotFound, rpc.MessageNotFound)
+		rpc.WriteRpcError(w, rpc.CodeNotFound, rpc.MessageNotFound)
 		return
 	}
-	runAction(ctx, l, w, r, action)
+	runAction(ctx, l, s.d, w, r, action)
 }

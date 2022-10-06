@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"github.com/MelkoV/go-learn-common/dictionary"
 	"github.com/MelkoV/go-learn-logger/logger"
 	"net/http"
 )
@@ -19,12 +20,12 @@ const (
 )
 
 type Action interface {
-	Handle(ctx context.Context, l logger.CategoryLogger, w http.ResponseWriter, r *http.Request)
+	Handle(ctx context.Context, l logger.CategoryLogger, d dictionary.IStorage, w http.ResponseWriter, r *http.Request)
 }
 
 type ProtocolError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code        int               `json:"code"`
+	Description map[string]string `json:"description"`
 }
 
 type ProtocolResponse struct {
@@ -32,11 +33,22 @@ type ProtocolResponse struct {
 	Result interface{}   `json:"result"`
 }
 
-func WriteError(w http.ResponseWriter, code int, message string) {
+func WriteError(w http.ResponseWriter, code int, description map[string]string) {
 	r := ProtocolResponse{
 		Error: ProtocolError{
-			Code:    code,
-			Message: message,
+			Code:        code,
+			Description: description,
+		},
+		Result: nil,
+	}
+	Write(w, r)
+}
+
+func WriteRpcError(w http.ResponseWriter, code int, message string) {
+	r := ProtocolResponse{
+		Error: ProtocolError{
+			Code:        code,
+			Description: map[string]string{"global": message},
 		},
 		Result: nil,
 	}

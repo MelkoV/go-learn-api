@@ -3,6 +3,8 @@ package cmd
 import (
 	"github.com/MelkoV/go-learn-api/api"
 	"github.com/MelkoV/go-learn-common/app"
+	"github.com/MelkoV/go-learn-common/dictionary"
+	"github.com/MelkoV/go-learn-common/dictionary/ru"
 	"github.com/MelkoV/go-learn-logger/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,7 +19,7 @@ var apiCmd = &cobra.Command{
 		port := viper.GetInt("api.port")
 		l := logger.NewCategoryLogger("jsonrpc/api", app.SYSTEM_UUID, logger.NewStreamLog())
 		l.Info("starting API server on port %d", port)
-		api.Serve(port, l)
+		api.Serve(port, l, dictionary.NewStorage(ru.Values))
 	},
 }
 
